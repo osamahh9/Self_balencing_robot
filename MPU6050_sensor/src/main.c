@@ -40,6 +40,10 @@ void app_main(void)
 
     // 2. Create the MPU6050 device handle
     mpu6050 = mpu6050_create(I2C_MASTER_NUM, MPU6050_I2C_ADDRESS);
+    if (mpu6050 == NULL) {
+        ESP_LOGE(TAG, "MPU6050 create failed!");
+        return;
+    }
 
     // 3. Wake up the MPU6050
     mpu6050_wake_up(mpu6050);
@@ -51,15 +55,18 @@ void app_main(void)
         mpu6050_gyro_value_t gyro;
 
         // Read accelerometer and gyroscope data
-        mpu6050_get_acce(mpu6050, &acce);
-        mpu6050_get_gyro(mpu6050, &gyro);
+        esp_err_t acce_err = mpu6050_get_acce(mpu6050, &acce);
+        esp_err_t gyro_err = mpu6050_get_gyro(mpu6050, &gyro);
 
-        // Print the data
-        ESP_LOGI(TAG, "Acce: X=%.2f, Y=%.2f, Z=%.2f || Gyro: X=%.2f, Y=%.2f, Z=%.2f",
-                 acce.acce_x, acce.acce_y, acce.acce_z,
-                 gyro.gyro_x, gyro.gyro_y, gyro.gyro_z);
+        // Send data over serial only if reads were successful
+        if (acce_err == ESP_OK && gyro_err == ESP_OK) {
+            // Print data in a comma-separated format
+            printf("%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n",
+                   acce.acce_x, acce.acce_y, acce.acce_z,
+                   gyro.gyro_x, gyro.gyro_y, gyro.gyro_z);
+        }
 
-        // Wait for 1 second before the next read
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        // Wait for 100 milliseconds before the next read for a smoother plot
+        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
